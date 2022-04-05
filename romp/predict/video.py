@@ -41,6 +41,9 @@ class Video_processor(Image_processor):
         video_basename = os.path.basename(video_basename)
         
         os.makedirs(self.output_dir, exist_ok=True)
+        final_output_dir = os.path.join(self.output_dir, 'final')
+        os.makedirs(final_output_dir, exist_ok=True)
+
         if self.save_visualization_on_img:
             self.visualizer.result_img_dir = self.output_dir 
         counter = Time_counter(thresh=1)
@@ -75,17 +78,17 @@ class Video_processor(Image_processor):
             img_paths = [img_path for img_path in results]
             results_track = {os.path.splitext(os.path.basename(img_path))[0]:results[img_path] for img_path in img_paths}
             for frame_id in sorted(list(results_track.keys())):
-                params_dict_new = {'cam':[], 'betas':[], 'poses':[]}
+                params_dict_new = {'cam_trans':[], 'betas':[], 'poses':[]}
                 item_names = list(params_dict_new.keys())
                 reorganize_idx_uq = np.unique(reorganize_idx)
                 to_org_inds = np.array([np.where(reorganize_idx==ind)[0][0] for ind in reorganize_idx_uq])
 
                 if self.show_largest_person_only:
-                    max_id = np.argmax(np.array([result['cam'][0] for result in results_track[frame_id]]))
+                    max_id = np.argmax(np.array([result['cam_trans'][0] for result in results_track[frame_id]]))
                     results_track[frame_id] = [results_track[frame_id][max_id]]
                     video_track_ids[frame_id] = [0]
                 elif self.make_tracking:
-                    detections = [Detection(points=(result['cam'][[1,2]]+1)/2.*args().input_size) for result in results_track[frame_id]]
+                    detections = [Detection(points=(result['cam_trans'][[1,2]]+1)/2.*args().input_size) for result in results_track[frame_id]]
                     if test_iter==0:
                         for _ in range(8):
                             tracked_objects = tracker.update(detections=detections)
@@ -162,24 +165,25 @@ class Video_processor(Image_processor):
                 print('Processed {} / {} frames'.format(test_iter * self.val_batch_size, len(internet_loader.dataset)))
             counter.start()
             results_frames.update(results)
-
+        
         if self.save_dict_results:
-            save_dict_path = os.path.join(self.output_dir, video_basename+'_results.npz')
+            save_dict_path = os.path.join(final_output_dir, video_basename+'_results.npz')
             print('Saving parameter results to {}'.format(save_dict_path))
             np.savez(save_dict_path, results=results_frames)
 
         if len(subjects_motion_sequences)>0:
-            save_dict_path = os.path.join(self.output_dir, video_basename+'_ts_results.npz')
+            save_dict_path = os.path.join(final_output_dir, video_basename+'_ts_results.npz')
             print('Saving parameter results to {}'.format(save_dict_path))
-            np.savez(save_dict_path, results=subjects_motion_sequences)
+            # np.savez(save_dict_path, results=subjects_motion_sequences)
+            np.savez(save_dict_path, results=results_track)
 
         if len(save_frame_list)>0 and self.save_visualization_on_img:
-            video_save_name = os.path.join(self.output_dir, video_basename+'_results.mp4')
+            video_save_name = os.path.join(final_output_dir, video_basename+'_results.mp4')
             print('Writing results to {}'.format(video_save_name))
             frames2video(sorted(save_frame_list), video_save_name, fps=self.fps_save)
 
         if self.show_mesh_stand_on_image and self.save_visualization_on_img:
-            video_save_name = os.path.join(self.output_dir, video_basename+'_soi_results.mp4')
+            video_save_name = os.path.join(final_output_dir, video_basename+'_soi_results.mp4')
             print('Writing results to {}'.format(video_save_name))
             frames2video(stand_on_imgs_frames, video_save_name, fps=self.fps_save)
         return results_frames
