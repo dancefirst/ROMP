@@ -16,11 +16,11 @@ def extract_motion_sequence(results_track_video, video_track_ids):
     return motion_sequence
 
 def create_OneEuroFilter(smooth_coeff):
-  return {'cam': OneEuroFilter(3., .0), 'global_orient': OneEuroFilter(2., .0), 'poses': OneEuroFilter(smooth_coeff, 0), 'betas': OneEuroFilter(0.6, .0)} 
+  return {'cam_trans': OneEuroFilter(3., .0), 'global_orient': OneEuroFilter(2., .0), 'poses': OneEuroFilter(smooth_coeff, 0), 'betas': OneEuroFilter(0.6, .0)} 
 
 
 def temporal_optimize_result(result, filter_dict):
-  result['cam'] = filter_dict['cam'].process(result['cam'])
+  result['cam_trans'] = filter_dict['cam_trans'].process(result['cam_trans'])
   result['betas'] = filter_dict['betas'].process(result['betas'])
   pose_euler = np.array([transform_rot_representation(vec, input_type='vec',out_type='euler') for vec in result['poses'].reshape((-1,3))])
   #global_orient_euler = filter_dict['global_orient'].process(pose_euler[:1])
